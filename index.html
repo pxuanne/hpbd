@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <title>Soft Floating Text with Vietnamese</title>
+  <title>@pxuanne</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap');
 
@@ -36,16 +36,18 @@
       height: 100%;
       overflow: visible;
       transform-style: preserve-3d;
-      transition: transform 0.1s ease-out;
+      transition: transform 0.1s ease-out; /* Giữ transition để xoay mượt mà */
       will-change: transform;
       z-index: 10;
+      transform: rotateX(45deg); /* Điều chỉnh giá trị 10deg để thay đổi độ nghiêng */
+      transform-origin: center center; /* Đảm bảo xoay quanh tâm */
     }
 
     .text {
       position: absolute;
       top: 0;
       font-family: 'Dancing Script', cursive;
-      font-size: 42px;
+      font-size: 35px;
       white-space: nowrap;
       pointer-events: none;
       animation:
@@ -159,27 +161,36 @@
 
   <script>
     const texts = [
-      "Anh yêu em", "Em nhớ anh", "Mãi bên nhau", "Hạnh phúc", "Vĩnh cửu",
-      "Tình yêu", "Ngọt ngào", "Bên nhau", "❤️", "Anh à", "Mong em", "Thương em",
-      "Mãi mãi", "Chỉ có em", "Trọn đời"
+      "Chúc mừng sinh nhật bạn Changg🐣", "Thêm xinh gái", "Thêm học giỏi", "Đạt được ước mơ", "nhiều xiền 💵",
+      "Hạnh phúc", "May mắn"
     ];
 
     const scene = document.getElementById('scene');
 
-    // Zoom & Rotation
+    // Zoom & Rotation variables
     let scale = 1;
     let rotateX = 0;
     let rotateY = 0;
 
-    function updateTransform() {
-      scene.style.transform = `scale(${scale}) rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
+    // Variables for mouse/touch rotation
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let targetRotateX = 0; // Target rotation for smoother animation
+    let targetRotateY = 0; // Target rotation for smoother animation
+
+
+    function updateSceneTransform() {
+      // Apply both scale and rotation
+      scene.style.transform = `scale(${scale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
     }
 
+    // Zoom functionality (from previous version, remains unchanged)
     document.addEventListener('wheel', function (e) {
       e.preventDefault();
       scale += e.deltaY * -0.001;
       scale = Math.min(Math.max(0.5, scale), 2);
-      updateTransform();
+      updateSceneTransform();
     }, { passive: false });
 
     let initialDistance = null;
@@ -193,6 +204,13 @@
     scene.addEventListener('touchstart', e => {
       if (e.touches.length === 2) {
         initialDistance = getDistance(e.touches);
+      } else if (e.touches.length === 1) { // Single touch for rotation
+        e.preventDefault(); // Prevent scrolling
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+        isDragging = true;
+        // Optionally, if you have background music, you can play it here on first interaction
+        // if (audio.paused) { audio.play().catch(err => console.log("Không thể phát tự động:", err)); }
       }
     }, { passive: false });
 
@@ -203,32 +221,73 @@
         const delta = currentDistance - initialDistance;
         scale += delta * 0.002;
         scale = Math.min(Math.max(0.5, scale), 2);
-        updateTransform();
+        updateSceneTransform();
         initialDistance = currentDistance;
+      } else if (e.touches.length === 1 && isDragging) { // Single touch for rotation
+        e.preventDefault();
+        const touchX = e.touches[0].clientX;
+        const touchY = e.touches[0].clientY;
+
+        const deltaX = (touchX - lastMouseX) * 0.5; // Adjust sensitivity
+        const deltaY = (touchY - lastMouseY) * 0.5; // Adjust sensitivity
+
+        targetRotateY += deltaX;
+        targetRotateX -= deltaY; // Invert for more natural up/down rotation
+
+        lastMouseX = touchX;
+        lastMouseY = touchY;
       }
     }, { passive: false });
 
     scene.addEventListener('touchend', e => {
-      if (e.touches.length < 2) {
+      if (e.touches.length < 2) { // Reset initialDistance if less than 2 touches
         initialDistance = null;
+      }
+      // If no touches are left, stop dragging
+      if (e.touches.length === 0) {
+        isDragging = false;
+        // Optionally, reset target rotation for a "snap back" effect
+        // targetRotateX = 0;
+        // targetRotateY = 0;
       }
     });
 
-    document.addEventListener('mousemove', e => {
-      const x = (e.clientX / window.innerWidth - 0.5) * 2;
-      const y = (e.clientY / window.innerHeight - 0.5) * 2;
-      rotateY = x * 20;
-      rotateX = -y * 15;
-      updateTransform();
+    // Mouse events for rotation
+    document.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
     });
 
-    if (window.DeviceOrientationEvent) {
-      window.addEventListener('deviceorientation', e => {
-        rotateY = e.gamma * 1.5 || 0;
-        rotateX = e.beta * 1.2 || 0;
-        updateTransform();
-      });
+    document.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+            const deltaX = (e.clientX - lastMouseX) * 0.5; // Adjust sensitivity
+            const deltaY = (e.clientY - lastMouseY) * 0.5; // Adjust sensitivity
+
+            targetRotateY += deltaX;
+            targetRotateX += deltaY; // Keep this as is for standard mouse rotation
+
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        }
+    });
+
+    document.addEventListener("mouseup", () => {
+        isDragging = false;
+        // Optionally, reset target rotation for a "snap back" effect
+        // targetRotateX = 0;
+        // targetRotateY = 0;
+    });
+
+    // Animation loop for smooth rotation
+    function updateRotation() {
+        rotateX += (targetRotateX - rotateX) * 0.1; // Smoothly move towards target
+        rotateY += (targetRotateY - rotateY) * 0.1; // Smoothly move towards target
+        updateSceneTransform(); // Update the scene's transform
+        requestAnimationFrame(updateRotation);
     }
+    updateRotation(); // Start the rotation animation loop
+
 
     function createText() {
       const el = document.createElement("div");
@@ -252,8 +311,8 @@
       }, (duration + delay) * 1000);
     }
 
-    setInterval(createText, 300);
-    for (let i = 0; i < 40; i++) createText();
+    setInterval(createText, 800);
+    for (let i = 0; i < 10; i++) createText();
 
     for (let i = 0; i < 80; i++) {
       const firefly = document.createElement('div');
@@ -266,7 +325,9 @@
 
     function createPetal() {
       const petal = document.createElement('div');
-      petal.className = 'petal';
+      petal.className = 'text'; // Keep the 'text' class for shared styles like font, opacity
+      const icons = ['🎂', '🎉', '💯'];
+      petal.textContent = icons[Math.floor(Math.random() * icons.length)];
 
       const left = Math.random() * 100;
       const duration = 10 + Math.random() * 5;
@@ -274,9 +335,9 @@
 
       petal.style.left = left + "vw";
       petal.style.top = "-5vh";
-      petal.style.animationDuration = `${duration}s`;
-      petal.style.animationDelay = `${delay}s`;
-      petal.style.transform = `rotate(${Math.random() * 360}deg)`;
+      petal.style.animation = `petalFall ${duration}s linear ${delay}s forwards`;
+      petal.style.fontSize = "32px";
+      petal.style.opacity = 0;
 
       scene.appendChild(petal);
 
@@ -285,8 +346,9 @@
       }, (duration + delay) * 1000);
     }
 
-    setInterval(createPetal, 300);
-    for (let i = 0; i < 20; i++) createPetal();
+    setInterval(createPetal, 1000);
+    for (let i = 0; i < 5; i++) createPetal();
+
   </script>
 </body>
 </html>
